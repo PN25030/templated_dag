@@ -18,7 +18,7 @@ class TemplatedDAGUtility:
         # Ensure necessary folders exist
         self.validate_folder_structure()
 
-    def validate_folder_structure(self):
+    def validate_folder_structure_1(self):
         """Validates if the necessary folder structure exists."""
         if not os.path.exists(self.config_folder):
             raise FileNotFoundError(f"Config folder does not exist: {self.config_folder}")
@@ -35,6 +35,49 @@ class TemplatedDAGUtility:
             with open(config_path, 'r') as file:
                 configs[config_file] = yaml.safe_load(file)
         return configs
+    
+    def validate_folder_structure(self):
+        # Define required folders
+        required_folders = [
+            os.path.join(self.templated_dag_location, 'configs'),
+            os.path.join(self.templated_dag_location, 'templates')
+        ]
+        
+        # Check each required folder
+        for folder in required_folders:
+            if not self.check_folder_exists(folder):
+                raise Exception(f"Required folder does not exist: {folder}")
+
+        # Check for .yaml files in configs folder
+        configs_folder = os.path.join(self.templated_dag_location, 'configs')
+        if not self.check_files_exist(configs_folder, '.yaml'):
+            raise Exception(f"No YAML files found in: {configs_folder}")
+
+        # Check for .jinja files in templates folder
+        templates_folder = os.path.join(self.templated_dag_location, 'templates')
+        if not self.check_files_exist(templates_folder, '.jinja'):
+            raise Exception(f"No Jinja files found in: {templates_folder}")
+
+    def check_folder_exists(self, folder_path):
+        """Check if the specified folder exists in the GCS bucket."""
+        bucket_name, folder_prefix = self.parse_gcs_path(folder_path)
+        blobs = self.client.list_blobs(bucket_name, prefix=folder_prefix, delimiter='/')
+        return any(blob.name.endswith('/') for blob in blobs.prefixes)
+
+    def check_files_exist(self, folder_path, file_extension):
+        """Check if there are any files with the specified extension in the folder."""
+        bucket_name, folder_prefix = self.parse_gcs_path(folder_path)
+        blobs = self.client.list_blobs(bucket_name, prefix=folder_prefix)
+        return any(blob.name.endswith(file_extension) for blob in blobs)
+
+    def parse_gcs_path(self, gcs_path):
+        """Parse the GCS path into bucket name and prefix."""
+        if not gcs_path.startswith('gs://'):
+            raise ValueError(f"Invalid GCS path: {gcs_path}")
+        path_parts = gcs_path[5:].split('/', 1)
+        bucket_name = path_parts[0]
+        folder_prefix = path_parts[1] if len(path_parts) > 1 else ''
+        return bucket_name, folder_prefix
 
     def render_templates(self):
         """Reads config files and renders templates based on the template_name key."""
