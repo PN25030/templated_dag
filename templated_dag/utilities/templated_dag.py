@@ -3,6 +3,7 @@ import yaml
 from jinja2 import Environment, FileSystemLoader
 from airflow.models import Variable
 from datetime import datetime
+from google.cloud import storage
 
 class TemplatedDAGUtility:
     def __init__(self):
@@ -14,7 +15,7 @@ class TemplatedDAGUtility:
         self.config_folder = os.path.join(self.templated_dag_location, "configs")
         self.template_folder = os.path.join(self.templated_dag_location, "templates")
         self.rendered_folder = os.path.join(self.composer_bucket_location, "rendered_templates")
-
+        self.client = storage.Client() 
         # Ensure necessary folders exist
         self.validate_folder_structure()
 
