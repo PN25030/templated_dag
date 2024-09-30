@@ -3,12 +3,30 @@ import os
 from jinja2 import Template
 
 class TemplatedDAGUtility:
-    def __init__(self, config_file_paths):
+    def __init__(self, config_directory):
         """
-        Initialize with multiple YAML config file paths.
-        :param config_file_paths: List of YAML file paths.
+        Initialize with a directory containing YAML config files.
+        :param config_directory: Path to the directory containing YAML files.
         """
-        self.config_file_paths = config_file_paths
+        self.config_directory = config_directory
+
+    def get_yaml_files(self):
+        """
+        Retrieves all YAML files from the specified config directory.
+        :return: List of YAML file paths.
+        """
+        try:
+            yaml_files = [
+                os.path.join(self.config_directory, file)
+                for file in os.listdir(self.config_directory)
+                if file.endswith(".yaml") or file.endswith(".yml")
+            ]
+            if not yaml_files:
+                raise FileNotFoundError(f"No YAML files found in directory: {self.config_directory}")
+            return yaml_files
+        except FileNotFoundError as exc:
+            print(f"Config directory not found: {self.config_directory}")
+            raise
 
     def load_config(self, config_file_path):
         """Reads and parses a single YAML configuration file."""
@@ -25,9 +43,11 @@ class TemplatedDAGUtility:
 
     def process_templates(self):
         """
-        Process each config file in the list and render the template based on the configuration.
+        Process all YAML files in the config directory and render their corresponding templates.
         """
-        for config_file_path in self.config_file_paths:
+        yaml_files = self.get_yaml_files()  # Get all YAML files from the config directory
+
+        for config_file_path in yaml_files:
             print(f"Processing config file: {config_file_path}")
             config_content = self.load_config(config_file_path)
 
@@ -60,7 +80,10 @@ class TemplatedDAGUtility:
 
             # Save the rendered template (you can customize the save path as needed)
             output_file_name = f"{template_name}_rendered_output.txt"
-            with open(os.path.join('rendered_templates', output_file_name), 'w') as output_file:
+            output_dir = os.path.join('rendered_templates')
+            os.makedirs(output_dir, exist_ok=True)  # Ensure the directory exists
+
+            with open(os.path.join(output_dir, output_file_name), 'w') as output_file:
                 output_file.write(rendered_output)
 
             print(f"Rendered and saved template: {output_file_name}")
@@ -71,12 +94,7 @@ class TemplatedDAGUtility:
             print(f"Error rendering template {template_name}: {exc}")
             raise
 
-# Example usage: Processing multiple YAML files
-config_file_paths = [
-    'configs/config1.yaml',
-    'configs/config2.yaml',
-    'configs/config3.yaml'
-]
-
-utility = TemplatedDAGUtility(config_file_paths)
+# Example usage: Process all YAML files from a config directory
+config_directory = 'configs/'  # Directory containing YAML files
+utility = TemplatedDAGUtility(config_directory)
 utility.process_templates()
