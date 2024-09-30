@@ -1,0 +1,82 @@
+import yaml
+import os
+from jinja2 import Template
+
+class TemplatedDAGUtility:
+    def __init__(self, config_file_paths):
+        """
+        Initialize with multiple YAML config file paths.
+        :param config_file_paths: List of YAML file paths.
+        """
+        self.config_file_paths = config_file_paths
+
+    def load_config(self, config_file_path):
+        """Reads and parses a single YAML configuration file."""
+        try:
+            with open(config_file_path, 'r') as file:
+                config_content = yaml.safe_load(file)  # Load YAML content as a dictionary
+                return config_content
+        except yaml.YAMLError as exc:
+            print(f"Error parsing YAML file {config_file_path}: {exc}")
+            raise
+        except FileNotFoundError as exc:
+            print(f"Config file not found: {config_file_path}")
+            raise
+
+    def process_templates(self):
+        """
+        Process each config file in the list and render the template based on the configuration.
+        """
+        for config_file_path in self.config_file_paths:
+            print(f"Processing config file: {config_file_path}")
+            config_content = self.load_config(config_file_path)
+
+            # Ensure the config_content is a dictionary
+            if isinstance(config_content, dict):
+                template_name = config_content.get("template_name")
+                if template_name:
+                    # Render the template for the current config
+                    self.render_template(template_name, config_content)
+                else:
+                    raise ValueError(f"template_name is missing in the YAML file: {config_file_path}")
+            else:
+                raise ValueError(f"The YAML file doesn't contain a valid dictionary structure: {config_file_path}")
+
+    def render_template(self, template_name, config_content):
+        """
+        Render the template based on the configuration.
+        :param template_name: Name of the Jinja template.
+        :param config_content: Dictionary containing the template variables.
+        """
+        # Load the Jinja template (you'll need to provide the actual template loading logic)
+        template_path = os.path.join('templates', f'{template_name}.jinja')
+        
+        try:
+            with open(template_path, 'r') as template_file:
+                template = Template(template_file.read())
+
+            # Render the template with values from the YAML config
+            rendered_output = template.render(config_content)
+
+            # Save the rendered template (you can customize the save path as needed)
+            output_file_name = f"{template_name}_rendered_output.txt"
+            with open(os.path.join('rendered_templates', output_file_name), 'w') as output_file:
+                output_file.write(rendered_output)
+
+            print(f"Rendered and saved template: {output_file_name}")
+
+        except FileNotFoundError:
+            raise FileNotFoundError(f"Template file {template_name}.jinja not found.")
+        except Exception as exc:
+            print(f"Error rendering template {template_name}: {exc}")
+            raise
+
+# Example usage: Processing multiple YAML files
+config_file_paths = [
+    'configs/config1.yaml',
+    'configs/config2.yaml',
+    'configs/config3.yaml'
+]
+
+utility = TemplatedDAGUtility(config_file_paths)
+utility.process_templates()
