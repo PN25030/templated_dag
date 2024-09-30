@@ -1,0 +1,49 @@
+from airflow import DAG
+from airflow.operators.dummy import DummyOperator
+from airflow.providers.google.cloud.operators.dataproc import DataprocSubmitJobOperator
+from airflow.utils.dates import days_ago
+
+# Define the DAG
+default_args = {
+    'start_date': days_ago(1),
+    'catchup': False
+}
+
+with DAG(
+    'dataproc_pyspark_job',
+    default_args=default_args,
+    schedule_interval=None,
+    description='A sample DAG to submit PySpark job to Dataproc',
+) as dag:
+
+    # Dummy start task
+    start = DummyOperator(
+        task_id='start'
+    )
+
+    # Define the PySpark job configuration
+    pyspark_job = {
+        'reference': {'project_id': 'your-gcp-project-id'},
+        'placement': {
+            'cluster_name': 'your-dataproc-cluster-name'
+        },
+        'pyspark_job': {
+            'main_python_file_uri': 'gs://your-bucket/pyspark_sample.py',  # PySpark file location in GCS
+        },
+    }
+
+    # Submit Dataproc PySpark job task
+    submit_pyspark_job = DataprocSubmitJobOperator(
+        task_id='submit_pyspark_job',
+        job=pyspark_job,
+        region='your-region',
+        project_id='your-gcp-project-id'
+    )
+
+    # Dummy end task
+    end = DummyOperator(
+        task_id='end'
+    )
+
+    # Define task dependencies
+    start >> submit_pyspark_job >> end

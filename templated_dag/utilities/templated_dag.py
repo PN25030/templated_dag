@@ -89,27 +89,28 @@ class TemplatedDAGUtility:
         env = Environment(loader=FileSystemLoader(self.template_folder))
 
         # Iterate over configs and render each corresponding template
-        for config_name, config_content in configs.items():
-            template_name = config_content.get("template_name")
-            if not template_name:
-                raise KeyError(f"'template_name' key not found in {config_name}")
-            
-            template_file = f"{template_name}.jinja"
-            template = env.get_template(template_file)
-            
-            # Render the template using values from the YAML file
-            rendered_output = template.render(config_content)
+        if isinstance(config_content, dict):
+            for config_name, config_content in configs.items():
+                template_name = config_content.get("template_name")
+                if not template_name:
+                    raise KeyError(f"'template_name' key not found in {config_name}")
+                
+                template_file = f"{template_name}.jinja"
+                template = env.get_template(template_file)
+                
+                # Render the template using values from the YAML file
+                rendered_output = template.render(config_content)
 
-            # Save the rendered template to the specified location with a timestamp
-            timestamp = datetime.now().strftime("%d_%m_%y_%H_%M")
-            rendered_file_name = f"{template_name}_{timestamp}.txt"
-            rendered_file_path = os.path.join(self.rendered_folder, rendered_file_name)
-            
-            os.makedirs(self.rendered_folder, exist_ok=True)
-            with open(rendered_file_path, 'w') as rendered_file:
-                rendered_file.write(rendered_output)
+                # Save the rendered template to the specified location with a timestamp
+                timestamp = datetime.now().strftime("%d_%m_%y_%H_%M")
+                rendered_file_name = f"{template_name}_{timestamp}.txt"
+                rendered_file_path = os.path.join(self.rendered_folder, rendered_file_name)
+                
+                os.makedirs(self.rendered_folder, exist_ok=True)
+                with open(rendered_file_path, 'w') as rendered_file:
+                    rendered_file.write(rendered_output)
 
-            print(f"Rendered template saved: {rendered_file_path}")
+                print(f"Rendered template saved: {rendered_file_path}")
 
 if __name__ == "__main__":
     # Create an instance of TemplatedDAGUtility and execute the rendering process
