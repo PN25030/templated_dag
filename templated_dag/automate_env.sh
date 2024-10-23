@@ -31,8 +31,34 @@ for KEY_FILE in "$KEY_DIR"/*.json; do
         export GOOGLE_APPLICATION_CREDENTIALS="$KEY_FILE"
         export TF_VAR_project_id="$PROJECT_ID"
 
-        # Run Terraform
-        terraform init
+        # Initialize Terraform with the HCP backend and project-specific workspace
+        cat > backend_override.tf <<- EOM
+        terraform {
+          backend "hcp" {
+            organization = "your_hcp_organization"
+            project      = "your_hcp_project"
+            workspaces {
+              name = "${PROJECT_ID}"
+            }
+          }
+        }
+EOM
+
+        # Initialize Terraform with the updated backend configuration
+        terraform init -reconfigure
+
+        # Check if workspace for this project exists, if not, create it
+        WORKSPACE_EXISTS=$(terraform workspace list | grep -w "$PROJECT_ID")
+
+        if [ -z "$WORKSPACE_EXISTS" ]; then
+            echo "Creating new workspace for project: $PROJECT_ID"
+            terraform workspace new "$PROJECT_ID"
+        else
+            echo "Switching to workspace: $PROJECT_ID"
+            terraform workspace select "$PROJECT_ID"
+        fi
+
+        # Apply Terraform in the selected workspace
         terraform apply -auto-approve
 
         if [ $? -ne 0 ]; then
