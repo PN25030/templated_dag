@@ -1,3 +1,4 @@
+
 The **best approach** to update the variable values dynamically based on the environment (`uat`, `prod`, `dev`) depends on the balance of **ease of management**, **scalability**, and **clarity**. Below is a combination of the **workspaces approach** and **environment-specific variable files** to provide flexibility while maintaining clarity.
 
 ### Recommended Approach: Combining Workspaces with Environment-Specific `.tfvars` Files
@@ -169,3 +170,37 @@ Workspaces provide logical isolation for each environment without needing multip
 - **Automate Deployment**: You can further automate this approach using CI/CD pipelines where each environment can be deployed based on specific branches (e.g., deploy to `prod` on the `main` branch, `dev` on the `develop` branch).
 
 Would you like to explore automating this with a CI/CD tool, or any other aspect in more detail?
+
+
+# dev.tfvars
+
+# GCP Project ID
+project_id  = "dev-project-id"
+
+# BigQuery Dataset ID
+dataset_id  = "dev_dataset"
+
+# Location for the dataset
+location    = "US"
+
+# Define multiple tables with respective table IDs and schema files
+tables = [
+  {
+    table_id    = "dev_table_1"
+    schema_file = "schema/dev_table_1_schema.json"
+  },
+  {
+    table_id    = "dev_table_2"
+    schema_file = "schema/dev_table_2_schema.json"
+  },
+  {
+    table_id    = "dev_table_3"
+    schema_file = "schema/dev_table_3_schema.json"
+  }
+]
+
+# Labels for resources
+labels = {
+  environment = "dev"
+  owner       = "team-dev"
+}
