@@ -174,6 +174,8 @@ Would you like to explore automating this with a CI/CD tool, or any other aspect
 
 # dev.tfvars
 
+# dev.tfvars
+
 # GCP Project ID
 project_id  = "dev-project-id"
 
@@ -204,3 +206,4 @@ labels = {
   environment = "dev"
   owner       = "team-dev"
 }
+
