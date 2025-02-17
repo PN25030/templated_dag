@@ -1,16 +1,26 @@
-Apologies for the confusion you've encountered. The error regarding the `--rules` flag suggests there might be a syntax issue or an update in the `gcloud` command's expected input format. Let's address this step by step.
+Apologies for the earlier confusion. Based on the latest Dataplex documentation, you can define data quality rules in a YAML file and reference it when creating a data quality scan. Here's how you can set up a YAML configuration file to perform a null check on a specific column in your BigQuery table.
 
-**1. Verify the `gcloud` SDK Version**
+**1. Create the YAML Configuration File**
 
-Ensure you're using the latest version of the Google Cloud SDK, as command formats can change over time. Update the SDK using:
+Save the following content into a file named `rules.yaml`:
 
-```sh
-gcloud components update
+```yaml
+rules:
+  - column: YOUR_COLUMN_NAME
+    nonNullExpectation: {}
+    threshold: 1.0
 ```
 
-**2. Correct Usage of the `--rules` Flag**
+**Explanation:**
 
-The `--rules` flag expects a JSON-formatted string that defines the data quality rules. Ensure that the JSON is correctly formatted and properly escaped. Here's how you can define a null check on a specific column:
+- `rules`: A list of data quality rules to apply.
+  - `column`: The name of the column you want to check for null values.
+  - `nonNullExpectation`: An expectation that the column should not contain null values.
+  - `threshold`: The acceptable ratio of non-null values. A value of `1.0` means 100% of the values must be non-null for the rule to pass.
+
+**2. Create the Data Quality Scan Using the YAML File**
+
+Use the `gcloud` command-line tool to create a data quality scan that references your YAML configuration:
 
 ```sh
 gcloud dataplex datascans create data-quality my-bq-null-check-scan \
@@ -19,69 +29,50 @@ gcloud dataplex datascans create data-quality my-bq-null-check-scan \
   --data-source=bigquery:projects/YOUR_PROJECT_ID/datasets/YOUR_DATASET/tables/YOUR_TABLE \
   --display-name="Null Check Scan" \
   --description="Dataplex data quality scan for null check on a column" \
-  --rules='[{"column": "YOUR_COLUMN_NAME", "nonNullExpectation": {}, "threshold": 1.0}]' \
+  --rules-file=rules.yaml \
   --schedule="every 24 hours"
 ```
 
-**Key Points:**
+**Important Notes:**
 
-- **JSON Formatting:** The `--rules` parameter requires a JSON array. Ensure that the JSON is correctly formatted and that double quotes are properly escaped if you're running the command in a shell that interprets quotes.
+- **Permissions:** Ensure that the Dataplex service account has the necessary permissions to access the BigQuery table. If the table and the scan are in different projects, grant the Dataplex service account read access to the BigQuery table.
 
-- **Rule Definition:** In the JSON, `"nonNullExpectation": {}` specifies the non-null expectation for the column, and `"threshold": 1.0` sets the passing threshold to 100%.
+- **Service Account Creation:** If you haven't created the Dataplex service account yet, you can do so with:
 
-**3. Alternative: Using a JSON/YAML File**
+  ```sh
+  gcloud beta services identity create --service=dataplex.googleapis.com
+  ```
 
-If embedding JSON directly in the command is causing issues, you can define the rules in a separate JSON or YAML file and reference it.
+  This command returns the Dataplex service account identifier if it exists.
 
-**Example JSON file (`rules.json`):**
+**3. Execute the Data Quality Scan**
 
-```json
-[
-  {
-    "column": "YOUR_COLUMN_NAME",
-    "nonNullExpectation": {},
-    "threshold": 1.0
-  }
-]
-```
-
-**Command:**
+To run the scan immediately:
 
 ```sh
-gcloud dataplex datascans create data-quality my-bq-null-check-scan \
+gcloud dataplex datascans run my-bq-null-check-scan \
   --location=us-central1 \
-  --project=YOUR_PROJECT_ID \
-  --data-source=bigquery:projects/YOUR_PROJECT_ID/datasets/YOUR_DATASET/tables/YOUR_TABLE \
-  --display-name="Null Check Scan" \
-  --description="Dataplex data quality scan for null check on a column" \
-  --rules-file=rules.json \
-  --schedule="every 24 hours"
+  --project=YOUR_PROJECT_ID
 ```
 
-**4. Validate the Command**
+**4. View the Scan Results**
 
-Before executing, validate the command to ensure there are no syntax errors:
+After execution, you can view the results:
 
 ```sh
-gcloud dataplex datascans create data-quality my-bq-null-check-scan \
+gcloud dataplex datascans describe my-bq-null-check-scan \
   --location=us-central1 \
-  --project=YOUR_PROJECT_ID \
-  --data-source=bigquery:projects/YOUR_PROJECT_ID/datasets/YOUR_DATASET/tables/YOUR_TABLE \
-  --display-name="Null Check Scan" \
-  --description="Dataplex data quality scan for null check on a column" \
-  --rules='[{"column": "YOUR_COLUMN_NAME", "nonNullExpectation": {}, "threshold": 1.0}]' \
-  --schedule="every 24 hours" \
-  --dry-run
+  --project=YOUR_PROJECT_ID
 ```
 
-The `--dry-run` flag allows you to validate the command without executing it.
+This command provides details about the scan, including its status and any data quality issues detected.
 
-**5. Additional Resources**
-
-For more detailed information, refer to the official Dataplex documentation on creating data quality scans:
+**References:**
 
 - [Use auto data quality | Dataplex](https://cloud.google.com/dataplex/docs/use-auto-data-quality)
 
-If the issue persists, consider reaching out to Google Cloud Support for personalized assistance.
+- [DataQualityRule | Dataplex](https://cloud.google.com/dataplex/docs/reference/rest/v1/DataQualityRule)
 
-Let me know if you need further help! 
+These resources offer additional information and examples to help you configure and manage data quality scans effectively.
+
+Let me know if you need further assistance! 
