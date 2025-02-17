@@ -1,52 +1,44 @@
-You can use the `gcloud dataplex data-scans` command to create and execute a Dataplex data scan for your BigQuery table.
+To run a **null check** on a specific column using **Dataplex Data Quality Scan**, you need to modify the `create` command by specifying **rules for data quality checks**.
 
-### **1. Create a Data Scan**
-Run the following command to create a Dataplex data scan for a BigQuery table:
+### **1. Create a Data Quality Scan with a Null Check**
+Run the following command:
 
 ```sh
-gcloud dataplex data-scans create my-bq-scan \
+gcloud dataplex data-scans create my-bq-null-check-scan \
   --location=us-central1 \
   --project=YOUR_PROJECT_ID \
   --data-source=projects/YOUR_PROJECT_ID/datasets/YOUR_DATASET/tables/YOUR_TABLE \
-  --type=DATA_PROFILE \
-  --display-name="My BigQuery Scan" \
-  --description="Dataplex data scan for BigQuery table" \
-  --schedule="every 24 hours"  # Adjust as needed
+  --type=DATA_QUALITY \
+  --display-name="Null Check Scan" \
+  --description="Dataplex data quality scan for null check on a column" \
+  --rules="rule-id=null-check, column=YOUR_COLUMN_NAME, rule-type=NULL_CHECK" \
+  --schedule="every 24 hours"
 ```
 
-#### **Explanation of flags:**
-- `--location`: The region where Dataplex is set up.
-- `--project`: Your GCP project ID.
-- `--data-source`: The full resource path of your BigQuery table.
-- `--type`: The type of scan (`DATA_PROFILE` or `DATA_QUALITY`).
-- `--schedule`: Optional, defines how frequently the scan runs.
-
----
-
-### **2. Execute (Run) the Scan**
-After creating the scan, you can trigger it manually using:
+### **2. Run the Scan**
+To execute the scan immediately:
 
 ```sh
-gcloud dataplex data-scans run my-bq-scan --location=us-central1 --project=YOUR_PROJECT_ID
+gcloud dataplex data-scans run my-bq-null-check-scan --location=us-central1 --project=YOUR_PROJECT_ID
 ```
 
-This will immediately execute the scan instead of waiting for a scheduled run.
-
----
-
-### **Check Scan Results**
-You can check the status of the scan execution using:
+### **3. Check the Scan Results**
+To check if null values were found:
 
 ```sh
-gcloud dataplex data-scans list --location=us-central1 --project=YOUR_PROJECT_ID
-```
-
-For details of a specific scan:
-
-```sh
-gcloud dataplex data-scans describe my-bq-scan --location=us-central1 --project=YOUR_PROJECT_ID
+gcloud dataplex data-scans describe my-bq-null-check-scan --location=us-central1 --project=YOUR_PROJECT_ID
 ```
 
 ---
 
-Let me know if you need additional configurations or adjustments! 🚀
+### **Explanation of Updates:**
+- Changed `--type=DATA_QUALITY` to specify a **data quality scan**.
+- Added `--rules` to define a **null check** on `YOUR_COLUMN_NAME`.
+- The rule format:  
+  - `rule-id`: A unique identifier for the rule.
+  - `column`: The column to check.
+  - `rule-type`: `NULL_CHECK` ensures that the column has no null values.
+
+This setup will **validate** the column for null values and report failures in Dataplex.
+
+Would you like to add more checks, like **duplicate values or threshold-based validations**? 🚀
