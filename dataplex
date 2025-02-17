@@ -1,41 +1,75 @@
-Here’s a sample job to run a Dataplex task using gcloud CLI and YAML configuration.
+To apply a simple null check on a column in a BigQuery table using Google Cloud Dataplex with gcloud commands, follow these steps:
 
-1. Create a Dataplex Task using gcloud CLI
+Step 1: Enable Required APIs
 
-Dataplex tasks are typically used for running Dataflow, Dataproc, or BigQuery scripts on a Dataplex lake.
+Ensure that the necessary APIs are enabled:
 
-gcloud dataplex tasks create my-task \
-    --location=us-central1 \
+gcloud services enable dataplex.googleapis.com bigquery.googleapis.com
+
+Step 2: Create a Dataplex Lake (if not already created)
+
+If you don’t have a Dataplex lake, create one:
+
+gcloud dataplex lakes create my-lake --location=<REGION> --project=<PROJECT_ID>
+
+Replace:
+	•	<REGION> with your GCP region (e.g., us-central1).
+	•	<PROJECT_ID> with your GCP project ID.
+
+Step 3: Create a Dataplex Zone (if not already created)
+
+Create a Dataplex Zone inside the lake:
+
+gcloud dataplex zones create my-zone \
     --lake=my-lake \
-    --execution-type=NOTEBOOK \
-    --spark-python-script-file=gs://my-bucket/scripts/my_script.py \
-    --container-image-java-jars=gs://my-bucket/jars/my-lib.jar \
-    --service-account=my-service-account@my-project.iam.gserviceaccount.com
+    --location=<REGION> \
+    --type=CURATED \
+    --project=<PROJECT_ID>
 
-2. Equivalent YAML Configuration
+Step 4: Register the BigQuery Table in Dataplex
 
-You can define the same task in a YAML file and deploy it using gcloud dataplex tasks create.
+You need to register your BigQuery dataset in Dataplex:
 
-task.yaml
+gcloud dataplex assets create my-bq-asset \
+    --lake=my-lake \
+    --zone=my-zone \
+    --location=<REGION> \
+    --resource-type=bigquery_dataset \
+    --resource-name=projects/<PROJECT_ID>/datasets/<BQ_DATASET>
 
-name: my-task
-displayName: "My Dataplex Task"
-executionSpec:
-  serviceAccount: my-service-account@my-project.iam.gserviceaccount.com
-  maxJobExecutionLifetime: 3600s
-triggerSpec:
-  type: ON_DEMAND
-notebook:
-  file: gs://my-bucket/scripts/my_script.py
-  archiveUris:
-    - gs://my-bucket/jars/my-lib.jar
+Step 5: Create a Dataplex Data Quality Task for Null Check
 
-Deploy using YAML
+Create a Dataplex Data Quality (DQ) Task to check for NULL values in a specific column:
 
-gcloud dataplex tasks create my-task --location=us-central1 --lake=my-lake --source=task.yaml
+gcloud dataplex data-quality-tasks create my-null-check-task \
+    --location=<REGION> \
+    --project=<PROJECT_ID> \
+    --lake=my-lake \
+    --execution-schedule="every 24 hours" \
+    --description="Check for NULL values in column <COLUMN_NAME>" \
+    --data-scan-type=DATA_QUALITY \
+    --bigquery-table=projects/<PROJECT_ID>/datasets/<BQ_DATASET>/tables/<BQ_TABLE> \
+    --rules="name=null_check, column=<COLUMN_NAME>, expression='COUNTIF(<COLUMN_NAME> IS NULL) = 0'"
 
-3. Verify the Task Execution
+Replace:
+	•	<BQ_DATASET> with your dataset name.
+	•	<BQ_TABLE> with your table name.
+	•	<COLUMN_NAME> with the column to check.
 
-gcloud dataplex tasks list --location=us-central1 --lake=my-lake
+Step 6: Run the Data Quality Task Manually (Optional)
 
-Would you like a sample for BigQuery, Dataflow, or Dataproc tasks instead?
+If you want to trigger the null check manually instead of waiting for the schedule:
+
+gcloud dataplex data-scans run my-null-check-task --location=<REGION>
+
+Step 7: Monitor the Data Quality Check Results
+
+To check the results of the task:
+
+gcloud dataplex data-scans list --location=<REGION> --filter="name:my-null-check-task"
+
+You can also check logs using:
+
+gcloud dataplex data-scans describe my-null-check-task --location=<REGION>
+
+This setup ensures that Dataplex automatically monitors the specified column for null values. Let me know if you need further refinements!
