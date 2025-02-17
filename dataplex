@@ -1,0 +1,41 @@
+Here’s a sample job to run a Dataplex task using gcloud CLI and YAML configuration.
+
+1. Create a Dataplex Task using gcloud CLI
+
+Dataplex tasks are typically used for running Dataflow, Dataproc, or BigQuery scripts on a Dataplex lake.
+
+gcloud dataplex tasks create my-task \
+    --location=us-central1 \
+    --lake=my-lake \
+    --execution-type=NOTEBOOK \
+    --spark-python-script-file=gs://my-bucket/scripts/my_script.py \
+    --container-image-java-jars=gs://my-bucket/jars/my-lib.jar \
+    --service-account=my-service-account@my-project.iam.gserviceaccount.com
+
+2. Equivalent YAML Configuration
+
+You can define the same task in a YAML file and deploy it using gcloud dataplex tasks create.
+
+task.yaml
+
+name: my-task
+displayName: "My Dataplex Task"
+executionSpec:
+  serviceAccount: my-service-account@my-project.iam.gserviceaccount.com
+  maxJobExecutionLifetime: 3600s
+triggerSpec:
+  type: ON_DEMAND
+notebook:
+  file: gs://my-bucket/scripts/my_script.py
+  archiveUris:
+    - gs://my-bucket/jars/my-lib.jar
+
+Deploy using YAML
+
+gcloud dataplex tasks create my-task --location=us-central1 --lake=my-lake --source=task.yaml
+
+3. Verify the Task Execution
+
+gcloud dataplex tasks list --location=us-central1 --lake=my-lake
+
+Would you like a sample for BigQuery, Dataflow, or Dataproc tasks instead?
