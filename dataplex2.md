@@ -1,44 +1,65 @@
-To run a **null check** on a specific column using **Dataplex Data Quality Scan**, you need to modify the `create` command by specifying **rules for data quality checks**.
+Apologies for any confusion in my previous responses. Based on the latest information from the [gcloud Dataplex Data Quality Scan documentation](https://cloud.google.com/sdk/gcloud/reference/dataplex/datascans/create/data-quality), here's how you can create and execute a data quality scan to perform a null check on a specific column in your BigQuery table.
 
 ### **1. Create a Data Quality Scan with a Null Check**
-Run the following command:
+
+Use the following `gcloud` command to create a data quality scan:
 
 ```sh
-gcloud dataplex data-scans create my-bq-null-check-scan \
+gcloud dataplex datascans create data-quality my-bq-null-check-scan \
   --location=us-central1 \
   --project=YOUR_PROJECT_ID \
-  --data-source=projects/YOUR_PROJECT_ID/datasets/YOUR_DATASET/tables/YOUR_TABLE \
-  --type=DATA_QUALITY \
+  --data-source=bigquery:projects/YOUR_PROJECT_ID/datasets/YOUR_DATASET/tables/YOUR_TABLE \
   --display-name="Null Check Scan" \
   --description="Dataplex data quality scan for null check on a column" \
-  --rules="rule-id=null-check, column=YOUR_COLUMN_NAME, rule-type=NULL_CHECK" \
+  --rules='[{"column": "YOUR_COLUMN_NAME", "nonNullExpectation": {}, "threshold": 1.0}]' \
   --schedule="every 24 hours"
 ```
 
-### **2. Run the Scan**
-To execute the scan immediately:
+**Explanation of the flags and parameters:**
+
+- `--location`: The region where the Dataplex scan will be created.
+- `--project`: Your Google Cloud project ID.
+- `--data-source`: The BigQuery table to be scanned, specified in the format `bigquery:projects/PROJECT_ID/datasets/DATASET/tables/TABLE`.
+- `--display-name`: A user-friendly name for the scan.
+- `--description`: A brief description of the scan's purpose.
+- `--rules`: A JSON array defining the data quality rules. In this case:
+  - `"column"`: The name of the column to check for null values.
+  - `"nonNullExpectation": {}`: Specifies that the column should not contain null values.
+  - `"threshold": 1.0`: Sets the passing threshold to 100% (i.e., all values must be non-null).
+- `--schedule`: (Optional) Defines how frequently the scan runs, e.g., `"every 24 hours"`.
+
+**Important Notes:**
+
+- Ensure that the Dataplex service account has the necessary permissions to access the BigQuery table. If the table and the scan are in different projects, grant the Dataplex service account read access to the BigQuery table. You can create the service account using:
+
+  ```sh
+  gcloud beta services identity create --service=dataplex.googleapis.com
+  ```
+
+  This command returns the Dataplex service account identifier if it exists. [Reference](https://cloud.google.com/dataplex/docs/use-data-profiling)
+
+### **2. Execute the Data Quality Scan**
+
+To run the scan immediately:
 
 ```sh
-gcloud dataplex data-scans run my-bq-null-check-scan --location=us-central1 --project=YOUR_PROJECT_ID
+gcloud dataplex datascans run my-bq-null-check-scan \
+  --location=us-central1 \
+  --project=YOUR_PROJECT_ID
 ```
 
-### **3. Check the Scan Results**
-To check if null values were found:
+### **3. View the Scan Results**
+
+After execution, you can view the results:
 
 ```sh
-gcloud dataplex data-scans describe my-bq-null-check-scan --location=us-central1 --project=YOUR_PROJECT_ID
+gcloud dataplex datascans describe my-bq-null-check-scan \
+  --location=us-central1 \
+  --project=YOUR_PROJECT_ID
 ```
 
----
+This command provides details about the scan, including its status and any data quality issues detected.
 
-### **Explanation of Updates:**
-- Changed `--type=DATA_QUALITY` to specify a **data quality scan**.
-- Added `--rules` to define a **null check** on `YOUR_COLUMN_NAME`.
-- The rule format:  
-  - `rule-id`: A unique identifier for the rule.
-  - `column`: The column to check.
-  - `rule-type`: `NULL_CHECK` ensures that the column has no null values.
+For more information, refer to the [gcloud Dataplex Data Quality Scan documentation](https://cloud.google.com/sdk/gcloud/reference/dataplex/datascans/create/data-quality).
 
-This setup will **validate** the column for null values and report failures in Dataplex.
-
-Would you like to add more checks, like **duplicate values or threshold-based validations**? 🚀
+Let me know if you need further assistance! 
