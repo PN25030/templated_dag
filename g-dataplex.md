@@ -239,5 +239,158 @@ In Dataplex, the YAML configuration file drives the DQ checks, and grouping is a
 - **No Dataset-Level Wildcard**: Dataplex doesn’t natively support a single `entity_uri` for all tables in a dataset; you must list tables individually in `rule_bindings`.
 - **Dynamic Grouping**: For large datasets, preprocess the YAML using a script to generate `rule_bindings` dynamically (e.g., via Python/Jinja2).
 - **Combine Approaches**: Mix table, rule type, and row filter groupings within one YAML for flexibility.
+Let’s expand on **Point 2: By Dataset (Multiple Tables in One Task)** from my previous response, and I’ll include an example where the Dataplex YAML configuration applies DQ checks across multiple BigQuery datasets (not just multiple tables within a single dataset). This involves defining `rule_bindings` that reference tables from different datasets within the same YAML file, allowing you to group DQ checks at a multi-dataset level in a single Dataplex task.
 
+---
+
+### Grouping DQ Checks by Multiple Datasets in Dataplex YAML
+
+In this approach, you:
+- Define reusable `rules` and `row_filters` that apply across datasets.
+- Use `rule_bindings` to specify tables from different BigQuery datasets via their `entity_uri` paths.
+- Execute all checks in one Dataplex Data Quality Task, with results aggregated in a single BigQuery table.
+
+Here’s an example:
+
+#### Example YAML with Multiple Datasets
+```yaml
+# Optional metadata for Dataplex context (if datasets are registered in a lake)
+metadata_registry_defaults:
+  dataplex:
+    projects: your-project-id
+    locations: us-central1
+    lakes: your-lake
+    zones: your-zone
+
+# Define reusable row filters
+row_filters:
+  NONE:
+    filter_sql_expr: "True"  # Applies to all rows
+  recent_data:
+    filter_sql_expr: "timestamp_column >= '2025-02-01'"  # Recent data only
+
+# Define reusable rules
+rules:
+  not_null_rule:
+    rule_type: NOT_NULL
+    dimension: completeness
+  range_rule:
+    rule_type: RANGE
+    dimension: validity
+    params:
+      min_value: 0
+      max_value: 1000
+  email_format_rule:
+    rule_type: REGEX
+    dimension: validity
+    params:
+      pattern: "[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}"
+
+# Define rule bindings for tables across multiple datasets
+rule_bindings:
+  # Dataset 1: customer_data
+  customers_completeness:
+    entity_uri: bigquery://projects/your-project-id/datasets/customer_data/tables/customers
+    column: "customer_id"
+    row_filter: NONE
+    rules:
+      - not_null_rule
+  customers_email_validity:
+    entity_uri: bigquery://projects/your-project-id/datasets/customer_data/tables/customers
+    column: "email"
+    row_filter: NONE
+    rules:
+      - email_format_rule
+
+  # Dataset 2: sales_data
+  orders_completeness:
+    entity_uri: bigquery://projects/your-project-id/datasets/sales_data/tables/orders
+    column: "order_id"
+    row_filter: recent_data
+    rules:
+      - not_null_rule
+  orders_amount_validity:
+    entity_uri: bigquery://projects/your-project-id/datasets/sales_data/tables/orders
+    column: "order_amount"
+    row_filter: recent_data
+    rules:
+      - range_rule
+
+  # Dataset 3: product_data
+  products_completeness:
+    entity_uri: bigquery://projects/your-project-id/datasets/product_data/tables/products
+    column: "product_id"
+    row_filter: NONE
+    rules:
+      - not_null_rule
+```
+
+---
+
+#### Explanation of the Example
+1. **Structure**:
+   - **`metadata_registry_defaults`**: Optional; ties the YAML to a Dataplex lake/zone if your datasets are managed there. You can omit this if referencing BigQuery directly.
+   - **`row_filters`**: Defines reusable conditions (e.g., `NONE` for all rows, `recent_data` for time-based filtering).
+   - **`rules`**: Defines reusable DQ checks (e.g., `not_null_rule`, `range_rule`, `email_format_rule`).
+   - **`rule_bindings`**: Groups checks by associating rules with specific tables and columns across multiple datasets.
+
+2. **Datasets Included**:
+   - **`customer_data`**: Contains the `customers` table with checks for `customer_id` (completeness) and `email` (validity).
+   - **`sales_data`**: Contains the `orders` table with checks for `order_id` (completeness) and `order_amount` (validity), filtered to recent data.
+   - **`product_data`**: Contains the `products` table with a completeness check on `product_id`.
+
+3. **Grouping**:
+   - The checks are implicitly grouped by dataset because each `entity_uri` points to a table within a specific dataset.
+   - You can further organize by naming `rule_bindings` (e.g., `customers_*`, `orders_*`) to reflect dataset boundaries.
+
+---
+
+#### Running the Task
+1. **Upload the YAML**:
+   Save the file as `multi_dataset_dq.yaml` and upload it to a GCS bucket (e.g., `gs://your-bucket/multi_dataset_dq.yaml`).
+
+2. **Create the Dataplex Task**:
+   Use the `gcloud` CLI:
+   ```bash
+   gcloud dataplex tasks create multi-dataset-dq-task \
+     --location=us-central1 \
+     --lake=your-lake \
+     --trigger-type=ON_DEMAND \
+     --execution-spec.service-account=your-service-account@your-project-id.iam.gserviceaccount.com \
+     --data-quality-spec.config=gs://your-bucket/multi_dataset_dq.yaml \
+     --data-quality-spec.result.bigquery-table=projects/your-project-id/datasets/dq_results/tables/multi_dataset_results
+   ```
+   - Replace placeholders with your project, lake, service account, and GCS/BigQuery paths.
+   - Use `--trigger-schedule` (e.g., `0 0 * * *` for daily) if you want scheduled runs.
+
+3. **Execute and Review**:
+   - Run the task: `gcloud dataplex tasks run multi-dataset-dq-task --location=us-central1`.
+   - Check the results in the BigQuery table `your-project-id.dq_results.multi_dataset_results`. The output will include columns like `entity`, `rule`, `dimension`, and pass/fail metrics, grouped by the bindings.
+
+---
+
+#### Sample BigQuery Results Query
+After running the task, you can query the results to analyze DQ across datasets:
+```sql
+SELECT
+  REGEXP_EXTRACT(entity, r'datasets/([^/]+)/tables') AS dataset_name,
+  entity AS table_path,
+  rule_binding_id,
+  rule_name,
+  dimension,
+  failed_count,
+  passed_count
+FROM `your-project-id.dq_results.multi_dataset_results`
+WHERE execution_ts = (SELECT MAX(execution_ts) FROM `your-project-id.dq_results.multi_dataset_results`)
+ORDER BY dataset_name, rule_binding_id;
+```
+This groups results by dataset and binding, making it easy to see DQ status across `customer_data`, `sales_data`, and `product_data`.
+
+---
+
+#### Scaling to More Datasets
+- **Add More Bindings**: Simply extend the `rule_bindings` section with additional datasets (e.g., `bigquery://projects/your-project-id/datasets/finance_data/tables/transactions`).
+- **Dynamic Generation**: For many datasets, use a script (e.g., Python with Jinja2) to generate the YAML dynamically based on a list of datasets/tables.
+
+Does this example meet your needs for grouping DQ checks across multiple datasets? Let me know if you’d like to tweak the rules, add more datasets, or adjust the structure further!
 Which grouping method fits your scenario best? If you have a specific dataset or rules in mind, I can tailor the YAML further!
