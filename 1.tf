@@ -1,54 +1,70 @@
-provider "google" {
-  project = var.project_id
-  region  = var.region
+variable "project_id" {
+  description = "GCP Project ID"
+  type        = string
 }
 
-# Create Dataplex Lake
-resource "google_dataplex_lake" "lake" {
-  name     = var.lake_name
-  location = var.region
-  labels   = var.labels
-
-  display_name = "Dataplex Lake - ${var.lake_name}"
-  description  = "This is a Dataplex lake for managing data."
-
-  lifecycle {
-    prevent_destroy = false
-  }
+variable "region" {
+  description = "GCP Region (e.g., us-central1)"
+  type        = string
 }
 
-# Create Dataplex Zone
-resource "google_dataplex_zone" "zone" {
-  name     = var.zone_name
-  lake     = google_dataplex_lake.lake.name
-  location = var.region
-  type     = var.zone_type
-
-  discovery_spec {
-    enabled             = var.discovery_enabled
-    include_patterns    = var.include_patterns
-    exclude_patterns    = var.exclude_patterns
-    schedule            = var.discovery_schedule
-  }
-
-  labels        = var.labels
-  display_name  = "Dataplex Zone - ${var.zone_name}"
-  description   = "Managed zone for structured/unstructured data."
+variable "lake_name" {
+  description = "Name of the Dataplex Lake"
+  type        = string
 }
 
-# Create Dataplex Asset
-resource "google_dataplex_asset" "asset" {
-  name     = var.asset_name
-  lake     = google_dataplex_lake.lake.name
-  zone     = google_dataplex_zone.zone.name
-  location = var.region
+variable "zone_name" {
+  description = "Name of the Dataplex Zone"
+  type        = string
+}
 
-  resource_spec {
-    name = var.asset_resource_name
-    type = var.asset_resource_type
-  }
+variable "zone_type" {
+  description = "Type of the Dataplex Zone (RAW or CURATED)"
+  type        = string
+  default     = "RAW"
+}
 
-  labels        = var.labels
-  display_name  = "Dataplex Asset - ${var.asset_name}"
-  description   = "An asset associated with the Dataplex zone."
+variable "asset_name" {
+  description = "Name of the Dataplex Asset"
+  type        = string
+}
+
+variable "asset_resource_name" {
+  description = "Resource Name (GCS Bucket or BigQuery Dataset)"
+  type        = string
+}
+
+variable "asset_resource_type" {
+  description = "Resource Type (STORAGE_BUCKET or BIGQUERY_DATASET)"
+  type        = string
+}
+
+variable "labels" {
+  description = "Labels to apply"
+  type        = map(string)
+  default     = {}
+}
+
+variable "discovery_enabled" {
+  description = "Enable automatic discovery"
+  type        = bool
+  default     = true
+}
+
+variable "discovery_schedule" {
+  description = "Discovery schedule (e.g., every 24h)"
+  type        = string
+  default     = "every 24h"
+}
+
+variable "include_patterns" {
+  description = "List of include patterns for discovery"
+  type        = list(string)
+  default     = []
+}
+
+variable "exclude_patterns" {
+  description = "List of exclude patterns for discovery"
+  type        = list(string)
+  default     = []
 }
